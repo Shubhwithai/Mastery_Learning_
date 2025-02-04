@@ -113,13 +113,18 @@ def show_dashboard():
         if st.session_state.history:
             fig, ax = plt.subplots()
             dates = [h['date'] for h in st.session_state.history]
-            scores = [h['score'] for h in st.session_state.history]
+            # Calculate cumulative correct answers instead of using 'score'
+            scores = []
+            correct_count = 0
+            for h in st.session_state.history:
+                if h['correct']:
+                    correct_count += 1
+                scores.append(correct_count)
+            
             ax.plot(dates, scores, marker='o')
             ax.set_title("Score Progression")
             ax.set_ylabel("Correct Answers")
             st.pyplot(fig)
-        else:
-            st.info("No quiz history yet")
 
 def question_card(question, index):
     """Styled question container with dynamic input types"""
