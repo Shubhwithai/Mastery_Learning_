@@ -123,7 +123,7 @@ def show_quiz_results():
             st.session_state.current_index = 0
             st.session_state.score = 0
             st.session_state.quiz_started = False
-            st.rerun()n()
+            st.rerun()
 
 def main():
     # Sidebar navigation
