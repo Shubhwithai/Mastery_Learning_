@@ -2,48 +2,62 @@ import streamlit as st
 import matplotlib.pyplot as plt
 from openai import OpenAI
 import json
-import time
 
-# Page config
-st.set_page_config(page_title="AI Learning System", layout="wide")
-
-# Initialize session states
+# Initialize session state variables if they don't exist
 if "level" not in st.session_state:
     st.session_state.level = 1
 if "score" not in st.session_state:
     st.session_state.score = 0
-if "questions" not in st.session_state:
-    st.session_state.questions = None
-if "current_index" not in st.session_state:
-    st.session_state.current_index = 0
 if "topic" not in st.session_state:
     st.session_state.topic = None
-if "quiz_started" not in st.session_state:
-    st.session_state.quiz_started = False
-if "answer_submitted" not in st.session_state:
-    st.session_state.answer_submitted = False
+if "questions" not in st.session_state:
+    st.session_state.questions = None
 
-def generate_quiz(topic, level, api_key):
+def show_dashboard():
+    st.title("📊 Student Dashboard")
+    level = st.session_state.get("level", 1)
+    score = st.session_state.get("score", 0)
+    
+    # Display current stats
+    st.write(f"🎯 Current Mastery Level: {level}")
+    st.write(f"🔥 Total Score: {score}")
+    
+    # Progress visualization
+    categories = ["Knowledge", "Application", "Reasoning"]
+    scores = [min(level * 20, 100) for _ in categories]
+    
+    # Create the plot
+    plt.figure(figsize=(8, 5))
+    plt.bar(categories, scores, color=['blue', 'green', 'red'])
+    plt.xlabel("Skill Areas")
+    plt.ylabel("Proficiency (%)")
+    plt.ylim(0, 100)  # Set y-axis limit to 100%
+    
+    # Display the plot
+    st.pyplot(plt)
+    
+    # Clear the current figure
+    plt.clf()
+
+def generate_quiz(topic, level, client):
     """Generate quiz questions using OpenAI API"""
     question_types = {
         1: "MCQ (Single Correct), True/False",
         2: "MCQ (Single/Multiple Correct), Matching",
-        3: "Passage-Based, Multiple Response, Matching (Complex), Sequence Ordering"
+        3: "Passage-Based, Multiple Response, Sequence Ordering"
     }
     
     prompt = f"""
         Generate {level}-level quiz questions for {topic}.
         Question types should be: {question_types[level]}.
-        Ensure at least 8 questions for Level 1 & 2, and 6 for Level 3.
+        Ensure exactly 5 questions.
         Format output as JSON:
         [
-          {{"question": "What is 2+2?", "options": ["2", "3", "4", "5"], "answer": "4", "type": "MCQ (Single Correct)"}},
-          {{"question": "...", "options": ["..."], "answer": "...", "type": "..."}}
+          {{"question": "What is 2+2?", "options": ["2", "3", "4", "5"], "answer": "4"}}
         ]
     """
     
     try:
-        client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "system", "content": prompt}]
@@ -51,127 +65,83 @@ def generate_quiz(topic, level, api_key):
         return json.loads(response.choices[0].message.content)
     except Exception as e:
         st.error(f"Error generating quiz: {e}")
-        return []
-
-def show_dashboard():
-    st.title("📊 Student Dashboard")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric("Current Level", st.session_state.level)
-        st.metric("Total Score", st.session_state.score)
-    
-    with col2:
-        st.subheader("Progress by Skill Area")
-        fig, ax = plt.subplots()
-        categories = ["Knowledge", "Application", "Analysis"]
-        scores = [min(st.session_state.level * 20, 100) for _ in categories]
-        ax.bar(categories, scores, color=['blue', 'green', 'red'])
-        ax.set_ylabel("Proficiency (%)")
-        st.pyplot(fig)
-
-def reset_quiz_state():
-    st.session_state.questions = None
-    st.session_state.current_index = 0
-    st.session_state.score = 0
-    st.session_state.quiz_started = False
-    st.session_state.answer_submitted = False
-
-def handle_answer_submission(answer, correct_answer):
-    if answer == correct_answer:
-        st.session_state.score += 1
-        st.success("Correct! ✅")
-    else:
-        st.error("Incorrect ❌")
-    
-    st.session_state.current_index += 1
-    st.session_state.answer_submitted = True
-
-def display_quiz():
-    st.title(f"Quiz: {st.session_state.topic}")
-    
-    if not st.session_state.questions:
-        with st.spinner("Generating quiz questions..."):
-            questions = generate_quiz(
-                st.session_state.topic,
-                st.session_state.level,
-                st.session_state.api_key
-            )
-            if questions:  # Only update if questions were generated successfully
-                st.session_state.questions = questions
-            else:
-                st.error("Failed to generate questions. Please try again.")
-                reset_quiz_state()
-                return
-    
-    if st.session_state.current_index < len(st.session_state.questions):
-        question = st.session_state.questions[st.session_state.current_index]
-        
-        st.subheader(f"Question {st.session_state.current_index + 1}")
-        st.write(question["question"])
-        
-        # Use a unique key for each question
-        answer = st.radio(
-            "Select your answer:",
-            question["options"],
-            key=f"q_{st.session_state.current_index}_{st.session_state.level}"
-        )
-        
-        if st.button("Submit Answer", key=f"submit_{st.session_state.current_index}"):
-            handle_answer_submission(answer, question["answer"])
-    else:
-        show_quiz_results()
-
-def show_quiz_results():
-    st.subheader("Quiz Complete! 🎉")
-    
-    total_questions = len(st.session_state.questions)
-    score_percentage = (st.session_state.score / total_questions) * 100
-    st.write(f"Your Score: {st.session_state.score}/{total_questions} ({score_percentage:.1f}%)")
-    
-    if score_percentage >= 80 and st.session_state.level < 3:
-        st.success(f"Congratulations! You've advanced to Level {st.session_state.level + 1}!")
-        if st.button("Start Next Level"):
-            st.session_state.level += 1
-            reset_quiz_state()
-    else:
-        if st.button("Try Again"):
-            reset_quiz_state()
+        return None
 
 def main():
-    # Sidebar navigation
+    # Sidebar Navigation
     menu = st.sidebar.radio("Navigation", ["Home", "Take Quiz", "Dashboard"])
-    
+
+    # Home Page
     if menu == "Home":
         st.title("AI-Powered Adaptive Learning System")
-        st.write("Welcome to the AI-Powered Learning System!")
-        st.write("This platform uses GPT-4 to generate personalized quizzes and adapt to your learning level.")
+        st.write("Select a topic and take a dynamic quiz generated by GPT-4!")
         
         api_key = st.text_input("Enter your OpenAI API Key:", type="password")
         if api_key:
             st.session_state.api_key = api_key
-            st.success("API Key saved! You can now take quizzes.")
+            st.session_state.client = OpenAI(api_key=api_key)
+            st.success("API Key saved successfully! You can now take quizzes.")
         else:
-            st.warning("Please provide an OpenAI API key to continue.")
-            
+            st.error("API Key is required to use this service.")
+            st.stop()
+
+    # Quiz Page
     elif menu == "Take Quiz":
-        if not hasattr(st.session_state, 'api_key') or not st.session_state.api_key:
+        if not hasattr(st.session_state, 'client'):
             st.error("Please enter your OpenAI API key in the Home page first.")
-            return
+            st.stop()
             
-        if not st.session_state.quiz_started:
-            st.header("Start a New Quiz")
-            selected_topic = st.text_input("Enter a topic:", "")
-            
-            if st.button("Generate Quiz") and selected_topic.strip():
+        st.header("Enter a Topic")
+        selected_topic = st.text_input("Enter a topic:", "")
+        
+        if st.button("Generate Quiz"):
+            if selected_topic.strip():
                 st.session_state.topic = selected_topic
-                st.session_state.quiz_started = True
-        else:
-            display_quiz()
+                questions = generate_quiz(
+                    selected_topic, 
+                    st.session_state.level,
+                    st.session_state.client
+                )
+                if questions:
+                    st.session_state.questions = questions
+                    st.success("Quiz generated! Starting now...")
+                    st.session_state.current_question = 0
+                    st.rerun()
+            else:
+                st.warning("⚠️ Please enter a topic before starting the quiz.")
+                
+        # Display quiz if questions are available
+        if st.session_state.questions and hasattr(st.session_state, 'current_question'):
+            questions = st.session_state.questions
+            current_q = st.session_state.current_question
             
+            if current_q < len(questions):
+                st.subheader(f"Question {current_q + 1} of {len(questions)}")
+                question = questions[current_q]
+                
+                st.write(question["question"])
+                answer = st.radio("Choose your answer:", question["options"])
+                
+                if st.button("Submit"):
+                    if answer == question["answer"]:
+                        st.session_state.score += 1
+                        st.success("Correct! ✅")
+                    else:
+                        st.error("Incorrect ❌")
+                    
+                    st.session_state.current_question += 1
+                    if st.session_state.current_question >= len(questions):
+                        st.success("Quiz completed! Check your results in the Dashboard.")
+                    st.rerun()
+
+    # Dashboard Page
     elif menu == "Dashboard":
         show_dashboard()
+        if st.button("Take Another Quiz"):
+            st.session_state.questions = None
+            st.session_state.current_question = 0
+            menu = "Take Quiz"
+            st.rerun()
 
 if __name__ == "__main__":
     main()
