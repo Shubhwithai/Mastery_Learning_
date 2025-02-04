@@ -26,27 +26,27 @@ def init_session():
 
 init_session()
 
-# # Custom CSS
-# st.markdown("""
-# <style>
-#     .stProgress > div > div > div > div {
-#         background-color: #4CAF50;
-#     }
-#     .metric-box {
-#         padding: 20px;
-#         border-radius: 10px;
-#         background-color: #f0f2f6;
-#         margin: 10px 0;
-#     }
-#     .question-card {
-#         padding: 2rem;
-#         background: white;
-#         border-radius: 10px;
-#         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-#         margin: 1rem 0;
-#     }
-# </style>
-# """, unsafe_allow_html=True)
+# Custom CSS
+st.markdown("""
+<style>
+    .stProgress > div > div > div > div {
+        background-color: #4CAF50;
+    }
+    .metric-box {
+        padding: 20px;
+        border-radius: 10px;
+        background-color: #f0f2f6;
+        margin: 10px 0;
+    }
+    .question-card {
+        padding: 2rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 1rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 def generate_quiz(topic, level, api_key):
     """Generate quiz questions using OpenAI API with enhanced formatting"""
@@ -186,8 +186,8 @@ def main():
     
     if page == "🏠 Home":
         st.title("AI-Powered Mastery Learning Demo")
-        st.image("https://images.unsplash.com/photo-1589254065878-42c9da997008?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80", 
-                use_column_width=True)
+        # st.image("https://images.unsplash.com/photo-1589254065878-42c9da997008?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80", 
+        #         use_column_width=True)
         
         st.write("""
         ## Experience Adaptive Learning
